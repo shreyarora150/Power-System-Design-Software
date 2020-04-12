@@ -1,0 +1,413 @@
+A.1 Code for determining ML/LV Rating and Short Circuit Calculations
+Input parameters:
+•	Primary rated voltage (kV.)
+•	Secondary rated voltage (kV.)
+•	Max. demand load (kW)
+•	Power factor after correction
+•	Transformer type
+•	Permissible loading percentage (%)
+
+Apparent MVA rating = Max. Demand load (kW)/ Power factor after correction
+MVA calculated = Apparent MVA rating/ Permissible loading percentage
+The final MVA rating was chosen as the standard rating nearest to the calculated.
+
+Over current protection and short circuit current calculation:
+
+Calculating overcurrent protection device rating on the low voltage side of the transformer:
+
+Transformer design current, Ib = MVA rating/ sqrt (3)*Secondary voltage
+
+Nominal Current nearest to transformer design current was chosen as overcurrent protection current on low voltage.
+
+Calculating the prospective short circuit current across the low voltage side of the transformer:
+
+Prospective Short circuit current = Ib*100/usc%
+
+Transformer rating (kVA) 	Usc in % 
+	  Oil-immersed 	  Dry Type    
+50 to 750	4	6
+800 to 3,200	6	6
+
+
+
+
+
+
+
+
+
+CODE:
+Private Sub CommandButton1_Click()
+    Dim adder As Integer
+    If OIL = True Then
+        permLoadingPercent.Text = 80
+        adder = 0
+    End If
+    If DRY = True Then
+        permLoadingPercent.Text = 90
+        adder = 6
+    End If
+    maxApparentPower.Text = Round(maxDemandLoad.Text / powerFactor.Text, 2)
+    calcTransformerRating.Text = Round(maxApparentPower.Text * (100 / permLoadingPercent.Text), 2)
+    Dim differencePre As Double
+    Dim differenceNew As Double
+    Dim ratingPre As Double
+
+    differencePre = Cells(3, 1) - calcTransformerRating.Text
+    ratingPre = Cells(3, 1)
+    For i = 3 To 5
+        For j = 1 + adder To 5 + adder
+            differenceNew = Cells(i, j) - calcTransformerRating.Text
+            If differencePre < 0 Then differencePre = differencePre * (-1)
+            If differenceNew < 0 Then differenceNew = differenceNew * (-1)
+            If differenceNew > differencePre Then
+                standardRating.Text = ratingPre
+                GoTo standardFound
+            End If
+            If differenceNew < differencePre Then
+                differencePre = differenceNew
+                ratingPre = Cells(i, j)
+            End If
+        Next j
+    Next i
+    
+standardFound:
+    transformerDesignCurrent.Text = Round(standardRating.Text / (Sqr(3) * secondaryRatedVoltage.Text), 2)
+    transformerLoadingPercent.Text = Round((maxApparentPower.Text * 100) / standardRating.Text, 2)
+    For i = 9 To 28
+        If standardRating.Text = Cells(i, 1) Then
+            nominalCurrent.Text = Cells(i, 2)
+            GoTo nominalCurrentFound
+        End If
+    Next i
+
+nominalCurrentFound:
+    Dim usc As Double
+    If OIL = True Then
+        For i = 3 To 15
+            If standardRating.Text = Cells(i, 14) Then
+                usc = Cells(i, 15)
+                GoTo uscFound
+            End If
+        Next i
+    End If
+    If DRY = True Then
+        For i = 3 To 17
+            If standardRating.Text = Cells(i, 17) Then
+                usc = Cells(i, 18)
+                GoTo uscFound
+            End If
+        Next i
+    End If
+    
+uscFound:
+    shortCircuitCurrent.Text = transformerDesignCurrent.Text * 100 / usc
+End Sub
+
+A.2 Code for Power Factor Improvement
+Function acos(x)
+acos = Atn(-x / Sqr(-x * x + 1)) + 2 * Atn(1)
+End Function
+
+Private Sub CommandButton1_Click()
+UserForm3.Show
+uderform2.Hide
+End Sub
+
+Private Sub CommandButton2_Click()
+Dim ang1 As Double
+Dim ang2 As Double
+Dim x1 As Double
+Dim x2 As Double
+Dim xc As Double
+ang1 = acos(pf_old.Text)
+ang2 = acos(pf_new.Text)
+x1 = (voltage.Text * voltage.Text) / (power.Text * Tan(ang1))
+x2 = (voltage.Text * voltage.Text) / (power.Text * Tan(ang2))
+xc = x2 - x1
+capacitance.Text = 1 / (2 * 3.14 * frequency.Text * xc)
+kvar.Text = power.Text / (Tan(ang1) - Tan(ang2))
+units_before.Text = (power.Text / Cos(ang1)) * daily_hours.Text * 365
+units_after.Text = (power.Text / Cos(ang2)) * daily_hours.Text * 365
+cost_before.Text = units_before.Text * tarif.Text
+cost_after.Text = units_after.Text * tarif.Text
+savings.Text = cost_before.Text - cost_after.Text
+
+
+
+End Sub
+
+A.3 Code for Cable Sizing
+Function acos(x)
+    acos = Atn(-x / Sqr(-x * x + 1)) + 2 * Atn(1)
+End Function
+
+
+Private Sub CommandButton1_Click()
+OB2.Text = IB3.Text
+OB3.Text = Sin(acos(IB3.Text))
+If OptionButton1 = True Then
+    OB1.Text = IB1.Text * IB6.Text * (IB5.Text / 100)
+    OB4.Text = IB4.Text
+End If
+If OptionButton2 = True Then
+    OB1.Text = IB1.Text * IB6.Text
+    OB4.Text = IB9.Text
+End If
+OB5.Text = Sin(acos(OB4.Text))
+OB6.Text = OB1.Text / OB4.Text
+
+End Sub
+
+
+
+Private Sub OptionButton1_Click()
+If OptionButton1 = True Then
+    I1.Caption = "Motor Rating"
+    I2.Visible = True
+    IB2.Visible = True
+    I3.Visible = True
+    IB3.Visible = True
+    I4.Visible = True
+    IB4.Visible = True
+    I5.Visible = True
+    IB5.Visible = True
+    I22.Caption = "Allowed Voltage Drop at Running"
+    I23.Visible = True
+End If
+End Sub
+
+Private Sub OptionButton2_Click()
+If OptionButton2 = True Then
+    I1.Caption = "Total Electrical Load"
+    I2.Visible = False
+    IB2.Visible = False
+    I3.Visible = False
+    IB3.Visible = False
+    I4.Visible = False
+    IB4.Visible = False
+    I5.Visible = False
+    IB5.Visible = False
+    I22.Caption = "Allowed Voltage Drop"
+    I23.Visible = False
+    IB23.Visible = False
+    
+End If
+End Sub
+
+Private Sub UserForm_Initialize()
+
+With IB2
+.AddItem "DOL"
+.AddItem "Y-D"
+.AddItem "Auto Transformer"
+.AddItem "Soft"
+.AddItem "Frequency Converter"
+End With
+
+With IB11
+.AddItem "Air"
+.AddItem "Ground"
+.AddItem "Duct"
+End With
+
+With IB11
+.AddItem "Air"
+.AddItem "Ground"
+.AddItem "Duct"
+End With
+
+With IB12
+.AddItem "25"
+.AddItem "30"
+.AddItem "35"
+.AddItem "40"
+.AddItem "45"
+.AddItem "50"
+.AddItem "55"
+.AddItem "60"
+End With
+
+With IB13
+.AddItem "1"
+.AddItem "2"
+.AddItem "3"
+.AddItem "4"
+.AddItem "5"
+.AddItem "6"
+.AddItem "7"
+.AddItem "8"
+End With
+
+With IB14
+.AddItem "1"
+.AddItem "2"
+.AddItem "3"
+.AddItem "4"
+.AddItem "5"
+.AddItem "6"
+.AddItem "7"
+.AddItem "8"
+End With
+
+With IB15
+.AddItem "Nill"
+.AddItem "Cable Diameter"
+.AddItem "0.125"
+.AddItem "0.25"
+.AddItem "0.5"
+End With
+
+With IB16
+.AddItem "1"
+.AddItem "2"
+.AddItem "3"
+.AddItem "4"
+.AddItem "5"
+.AddItem "6"
+.AddItem "7"
+.AddItem "8"
+.AddItem "9"
+.AddItem "10"
+End With
+
+With IB17
+.AddItem "0.5"
+.AddItem "0.7"
+.AddItem "0.9"
+.AddItem "1"
+.AddItem "1.2"
+.AddItem "1.5"
+End With
+
+With IB18
+.AddItem "Not Know"
+.AddItem "1"
+.AddItem "1.5"
+.AddItem "2"
+.AddItem "2.5"
+.AddItem "3"
+End With
+
+With IB19
+.AddItem "Very Wet Soil"
+.AddItem "Wet Soil"
+.AddItem "Damp Soil"
+.AddItem "Dry Soil"
+.AddItem "Very Dry Soil"
+End With
+
+With IB21
+.AddItem "PVC Flexible (Upto 1.1 KV)"
+.AddItem "LT PVC (Upto 1.1 KV)"
+.AddItem "LT XLPE (6.6 KV Earthed)"
+.AddItem "HT XLPE (11 KV Earthed)"
+.AddItem "HT XLPE (11 KV Un-Earthed)"
+.AddItem "HT XLPE (66 KV Earthed)"
+End With
+
+With ComboBox3
+.AddItem "Al"
+.AddItem "Cu"
+End With
+
+With ComboBox1
+.AddItem "3-Ø"
+.AddItem "1-Ø"
+End With
+
+With ComboBox2
+.AddItem "1cX4"
+.AddItem "1cX6"
+.AddItem "1cX10"
+.AddItem "1cX16"
+.AddItem "1cX25"
+.AddItem "1cX35"
+.AddItem "1cX50"
+.AddItem "1cX70"
+.AddItem "1cX95"
+.AddItem "1cX120"
+.AddItem "1cX150  "
+.AddItem "1cX185  "
+.AddItem "1cX240  "
+.AddItem "1cX300  "
+.AddItem "1cX400  "
+.AddItem "1cX 500  "
+.AddItem "1cX 630  "
+.AddItem "1cX800  "
+.AddItem "1cX1000  "
+.AddItem "2cX1.5"
+.AddItem "2cX2.5"
+.AddItem "2cX4"
+.AddItem " 2cX 6  "
+.AddItem "2cX10  "
+.AddItem "2cX16  "
+.AddItem "2cX25  "
+.AddItem "2cX35  "
+.AddItem "2cX50  "
+.AddItem "2cX70  "
+.AddItem "2cX95  "
+.AddItem "2cX120  "
+.AddItem "2cX150  "
+.AddItem "2cX185  "
+.AddItem "2cX240  "
+.AddItem "2cX300  "
+.AddItem "2cX400  "
+.AddItem "2cX500  "
+.AddItem "2cX630  "
+.AddItem "3cX1.5"
+.AddItem "3cX2.5"
+.AddItem "3cX4"
+.AddItem "3cX 6  "
+.AddItem "3cX 10  "
+.AddItem "3cX 16  "
+.AddItem "3cX 25  "
+.AddItem "3cX 35  "
+.AddItem "3cX 50  "
+.AddItem "3cX 70  "
+.AddItem "3cX 95  "
+.AddItem "3cX 120  "
+.AddItem "3cX 150  "
+.AddItem "3cX 185  "
+.AddItem "3cX 240  "
+.AddItem "3cX 300  "
+.AddItem "3cX 400  "
+.AddItem "3cX 500  "
+.AddItem "3cX 630  "
+.AddItem " 3.5X16"
+.AddItem " 3.5X25"
+.AddItem " 3.5X35"
+.AddItem " 3.5X50"
+.AddItem " 3.5X70"
+.AddItem " 3.5X95"
+.AddItem " 3.5X120"
+.AddItem " 3.5X150"
+.AddItem " 3.5X185"
+.AddItem " 3.5X240"
+.AddItem " 3.5X300"
+.AddItem " 3.5X400"
+.AddItem " 3.5X500"
+.AddItem " 3.5X630"
+.AddItem "4cX 1.5"
+.AddItem "4cX 2.5"
+.AddItem "4cX4  "
+.AddItem "4cX 6  "
+.AddItem "4cX 10  "
+.AddItem "4cX16  "
+.AddItem "4cX 25  "
+.AddItem "4cX35  "
+.AddItem "4cX 50  "
+.AddItem "4cX70  "
+.AddItem "4cX 95  "
+.AddItem "4cX 120  "
+.AddItem "4cX 150  "
+.AddItem "4cX 185  "
+.AddItem "4cX 240  "
+.AddItem "4cX 300  "
+.AddItem "4cX 400  "
+.AddItem "4cX 500  "
+.AddItem "4cX 630  "
+End With
+
+End Sub
+
